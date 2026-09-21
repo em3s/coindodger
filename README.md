@@ -2,10 +2,16 @@
 
 동전을 넣고 바라보는 코인 푸셔(코인 도저) 게임. 실제 기계와 같은 강체 물리로 동작합니다.
 
+**▶ 플레이: https://em3s.github.io/coindodger/**
+
 ```bash
 npm install
 npm run dev     # http://localhost:5188
+npm run build   # dist/ (base 경로 /coindodger/)
 ```
+
+`main`에 푸시하면 GitHub Actions가 빌드해 Pages로 배포합니다 (`.github/workflows/deploy.yml`).
+다른 경로에 올리려면 `BASE_PATH=/my-path/ npm run build`.
 
 조작: 화면 아래 **투입 위치** 슬라이더(또는 3D 투입구 손잡이 드래그, <kbd>←</kbd><kbd>→</kbd>)로 좌우를 맞추고,
 **클릭/탭** 또는 <kbd>Space</kbd>로 투입. <kbd>T</kbd> 자동 · <kbd>M</kbd> 소리 · <kbd>R</kbd> 시점 · <kbd>E</kbd> 세팅 모드.
@@ -160,4 +166,6 @@ tools/*.mjs        헤드리스 물리 검증 하니스 (브라우저 없이 결
 
 - 번들이 6.7MB(gzip 1.5MB)입니다. `@babylonjs/core`를 통째로 import 해서인데,
   개별 모듈 import로 바꾸면 크게 줄일 수 있습니다.
-- 모바일 터치 최적화, 특수 프라이즈 코인, 저장/리더보드는 v2.
+- 특수 프라이즈 코인, 리더보드는 다음 단계.
+- `public/env/studio.env`는 Babylon.js 공식 에셋(Apache-2.0), `public/HavokPhysics.wasm`은
+  `@babylonjs/havok` 배포본을 그대로 담았습니다.
