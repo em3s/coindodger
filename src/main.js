@@ -353,7 +353,7 @@ async function boot() {
   });
 
   hud.setSetup(false);
-  hud.setMuted(false);
+  hud.setMuted(sfx.muted);
   game.autoDrop = true; // 방치형이 기본이다
   hud.setAuto(true);
 

@@ -2,7 +2,7 @@
 export class Sfx {
   constructor() {
     this.ctx = null;
-    this.muted = false;
+    this.muted = true; // 기본은 꺼둔다. 방치해두는 화면이라 소리가 켜져 있으면 곤란하다.
     this.master = null;
     this._noise = null;
   }
@@ -14,7 +14,7 @@ export class Sfx {
     if (!Ctx) return;
     this.ctx = new Ctx();
     this.master = this.ctx.createGain();
-    this.master.gain.value = 0.35;
+    this.master.gain.value = this.muted ? 0 : 0.35;
     this.master.connect(this.ctx.destination);
 
     const len = this.ctx.sampleRate * 0.5;
@@ -25,19 +25,23 @@ export class Sfx {
   }
 
   resume() {
+    if (this.muted) return; // 꺼져 있으면 오디오 컨텍스트를 만들 이유가 없다
     this._ensure();
     if (this.ctx && this.ctx.state === "suspended") this.ctx.resume();
   }
 
   setMuted(v) {
     this.muted = v;
+    if (!v) this._ensure(); // 켤 때 비로소 만든다
     if (this.master) this.master.gain.value = v ? 0 : 0.35;
+    if (!v && this.ctx?.state === "suspended") this.ctx.resume();
   }
 
   /** 금속 동전 낙하음: 노이즈 임펄스 + 고주파 부분음 */
   clink(gain = 1) {
+    if (this.muted) return;
     this._ensure();
-    if (!this.ctx || this.muted) return;
+    if (!this.ctx) return;
     const t = this.ctx.currentTime;
 
     const src = this.ctx.createBufferSource();
@@ -71,8 +75,9 @@ export class Sfx {
 
   /** 획득음: 상승 3음 */
   payout(streak = 0) {
+    if (this.muted) return;
     this._ensure();
-    if (!this.ctx || this.muted) return;
+    if (!this.ctx) return;
     const t = this.ctx.currentTime;
     const root = 660 * Math.pow(2, Math.min(streak, 6) / 12);
     [0, 4, 7].forEach((semi, i) => {
@@ -92,8 +97,9 @@ export class Sfx {
 
   /** 대형 동전 등장 — 낮고 묵직한 종 */
   jumbo() {
+    if (this.muted) return;
     this._ensure();
-    if (!this.ctx || this.muted) return;
+    if (!this.ctx) return;
     const t = this.ctx.currentTime;
     [330, 495, 660].forEach((f, i) => {
       const o = this.ctx.createOscillator();
@@ -112,8 +118,9 @@ export class Sfx {
 
   /** 코인 러시 — 상승 아르페지오 */
   jackpot() {
+    if (this.muted) return;
     this._ensure();
-    if (!this.ctx || this.muted) return;
+    if (!this.ctx) return;
     const t = this.ctx.currentTime;
     [0, 4, 7, 12, 16, 19, 24].forEach((semi, i) => {
       const o = this.ctx.createOscillator();
@@ -131,8 +138,9 @@ export class Sfx {
   }
 
   drop() {
+    if (this.muted) return;
     this._ensure();
-    if (!this.ctx || this.muted) return;
+    if (!this.ctx) return;
     const t = this.ctx.currentTime;
     const o = this.ctx.createOscillator();
     o.type = "square";
