@@ -9,6 +9,7 @@ import { Game } from "./game.js";
 import { Hud } from "./hud.js";
 import { Sfx } from "./audio.js";
 import { buildShareUrl, decodeState, readStateParam } from "./state.js";
+import { registerSW } from "virtual:pwa-register";
 
 /** 모바일/저사양에서는 렌더 비용을 낮춘다. 물리는 동일하게 둔다 — 상태 호환을 위해. */
 const IS_TOUCH =
@@ -323,6 +324,31 @@ async function boot() {
       console.warn(err);
       hud.toast("링크를 만들지 못했습니다");
     }
+  });
+
+  // ---------- PWA: 설치 + 업데이트 알림 ----------
+  // 새 버전을 몰래 갈아끼우지 않는다. 배너로 알리고, 누르면 그때 적용한다.
+  const updateEl = document.getElementById("update");
+  const updateBtn = document.getElementById("btn-update");
+  const buildInfo = document.getElementById("build-info");
+  buildInfo.textContent = `빌드 ${new Date(__BUILD_TIME__).toLocaleString("ko-KR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  })}`;
+
+  const applyUpdate = registerSW({
+    onNeedRefresh() {
+      updateEl.hidden = false;
+      requestAnimationFrame(() => updateEl.classList.add("show"));
+    },
+    onRegisteredSW(_url, reg) {
+      // 켜둔 채로 며칠 지나는 화면이라 주기적으로 새 버전을 확인한다
+      if (reg) setInterval(() => reg.update(), 30 * 60 * 1000);
+    },
+  });
+  updateBtn.addEventListener("click", () => {
+    updateBtn.textContent = "적용 중…";
+    applyUpdate(true);
   });
 
   hud.setSetup(false);

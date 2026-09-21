@@ -345,7 +345,7 @@ html, body {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(120% 90% at 50% 45%, rgba(5, 6, 10, 0.5) 0%, rgba(5, 6, 10, 0.82) 100%);
+  background: radial-gradient(120% 90% at 50% 45%, rgba(5, 6, 10, 0.76) 0%, rgba(5, 6, 10, 0.94) 100%);
   opacity: 1;
   transition: opacity 0.9s ease;
   z-index: 1;
@@ -361,23 +361,23 @@ body.awake #dim { opacity: 0; transition: opacity 0.25s ease; }
   transform: translate(-50%, -50%);
   display: grid;
   justify-items: center;
-  gap: 10px;
+  gap: 14px;
   text-align: center;
   transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
 #clock-time {
-  font-size: clamp(64px, 17vw, 168px);
+  font-size: clamp(96px, 28vw, 260px);
   font-weight: 200;
-  letter-spacing: 0.02em;
-  line-height: 1;
+  letter-spacing: 0.01em;
+  line-height: 0.95;
   font-variant-numeric: tabular-nums;
-  color: rgba(244, 241, 234, 0.92);
-  text-shadow: 0 6px 40px rgba(0, 0, 0, 0.6);
+  color: rgba(255, 253, 248, 0.98);
+  text-shadow: 0 10px 70px rgba(0, 0, 0, 0.8), 0 0 90px rgba(240, 191, 94, 0.12);
 }
 #clock-date {
-  font-size: clamp(12px, 3vw, 15px);
-  letter-spacing: 0.3em;
-  color: rgba(244, 241, 234, 0.42);
+  font-size: clamp(13px, 3.6vw, 18px);
+  letter-spacing: 0.34em;
+  color: rgba(244, 241, 234, 0.58);
 }
 /* 깨어 있을 땐 시계가 물러나 기계에 자리를 내준다 */
 body.awake #clock {
@@ -402,4 +402,47 @@ body:not(.awake) .icon { pointer-events: none; }
 @media (max-width: 760px) {
   #clock-time { font-weight: 200; }
   #clock-date { letter-spacing: 0.24em; }
+}
+
+/* ---------- 업데이트 알림 ----------
+   딤 상태에서도 보여야 하므로 딤 위에 둔다. */
+#update {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translate(-50%, -14px);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 10px 9px 18px;
+  border-radius: 999px;
+  background: rgba(20, 22, 30, 0.9);
+  border: 1px solid rgba(240, 191, 94, 0.4);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  font-size: 13px;
+  color: var(--ink);
+  opacity: 0;
+  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+#update.show { opacity: 1; transform: translate(-50%, 0); }
+#update button {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(180deg, var(--gold-hi), var(--gold));
+  color: #0d0e13;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.build {
+  margin: 12px 0 0;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: rgba(244, 241, 234, 0.22);
 }
