@@ -340,6 +340,7 @@ async function boot() {
     onNeedRefresh() {
       updateEl.hidden = false;
       requestAnimationFrame(() => updateEl.classList.add("show"));
+      sfx.jumbo(); // 딤 상태로 켜둔 화면이라 소리로도 알린다
     },
     onRegisteredSW(_url, reg) {
       // 켜둔 채로 며칠 지나는 화면이라 주기적으로 새 버전을 확인한다
