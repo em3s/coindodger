@@ -1,6 +1,6 @@
 import * as BABYLON from "@babylonjs/core";
-import { COIN } from "./config.js";
-import { createCoinMaterial } from "./materials.js";
+import { COIN, EVENT } from "./config.js";
+import { createCoinMaterial, createJumboMaterial } from "./materials.js";
 
 const V3 = BABYLON.Vector3;
 
@@ -20,37 +20,34 @@ export class CoinPool {
     this.activeCount = 0;
     this._cursor = 0;
 
-    const mat = createCoinMaterial(scene);
     const uvCap = new BABYLON.Vector4(0, 0, 0.5, 1);
     const uvSide = new BABYLON.Vector4(0.5, 0, 1, 1);
+    const makeMaster = (name, r, h, mat) => {
+      const m = BABYLON.MeshBuilder.CreateCylinder(
+        name,
+        { diameter: r * 2, height: h, tessellation: 36, faceUV: [uvCap, uvSide, uvCap] },
+        scene
+      );
+      m.material = mat;
+      m.isVisible = false; // 마스터는 숨겨도 인스턴스는 그려진다
+      m.isPickable = false;
+      m.receiveShadows = true;
+      m.alwaysSelectAsActiveMesh = true;
+      if (shadowGen) shadowGen.addShadowCaster(m, true);
+      return m;
+    };
 
-    this.master = BABYLON.MeshBuilder.CreateCylinder(
-      "coinMaster",
-      {
-        diameter: COIN.r * 2,
-        height: COIN.h,
-        tessellation: 36,
-        faceUV: [uvCap, uvSide, uvCap],
-      },
-      scene
-    );
-    this.master.material = mat;
-    this.master.isVisible = false; // 마스터는 숨겨도 인스턴스는 그려진다
-    this.master.isPickable = false;
-    this.master.receiveShadows = true;
-    this.master.alwaysSelectAsActiveMesh = true;
+    this.jumboR = COIN.r * EVENT.jumboScale;
+    this.jumboH = COIN.h * EVENT.jumboScale * EVENT.jumboThick;
+    this.master = makeMaster("coinMaster", COIN.r, COIN.h, createCoinMaterial(scene));
+    this.jumboMaster = makeMaster("jumboMaster", this.jumboR, this.jumboH, createJumboMaterial(scene));
 
-    if (shadowGen) {
-      shadowGen.addShadowCaster(this.master, true);
-    }
-
-    for (let i = 0; i < COIN.max; i++) {
-      this.entries.push(this._create(i));
-    }
+    for (let i = 0; i < COIN.max; i++) this.entries.push(this._create(i, false));
+    for (let i = 0; i < EVENT.jumboPool; i++) this.entries.push(this._create(COIN.max + i, true));
   }
 
-  _create(i) {
-    const mesh = this.master.createInstance(`coin${i}`);
+  _create(i, jumbo) {
+    const mesh = (jumbo ? this.jumboMaster : this.master).createInstance(`coin${i}`);
     mesh.rotationQuaternion = BABYLON.Quaternion.Identity();
     mesh.position.set(0, -6 - i * 0.001, 0);
     mesh.isPickable = false;
@@ -58,10 +55,12 @@ export class CoinPool {
     mesh.setEnabled(false);
 
     // 셰이프는 코인마다 따로 만든다. 충돌 필터를 개별로 꺼야 풀링이 안전하다.
+    const r = jumbo ? this.jumboR : COIN.r;
+    const h = jumbo ? this.jumboH : COIN.h;
     const shape = new BABYLON.PhysicsShapeCylinder(
-      new V3(0, -COIN.h / 2, 0),
-      new V3(0, COIN.h / 2, 0),
-      COIN.r,
+      new V3(0, -h / 2, 0),
+      new V3(0, h / 2, 0),
+      r,
       this.scene
     );
     shape.material = { friction: COIN.friction, restitution: COIN.restitution };
@@ -71,7 +70,7 @@ export class CoinPool {
     body.setLinearDamping(COIN.linDamp);
     body.setAngularDamping(COIN.angDamp);
 
-    const entry = { mesh, body, shape, active: false, index: i, queued: false };
+    const entry = { mesh, body, shape, jumbo, active: false, index: i, queued: false };
     this._sleep(entry);
     this.byBody.set(body, entry);
     return entry;
@@ -91,13 +90,14 @@ export class CoinPool {
   }
 
   /** 가장 오래 쉰 코인을 재사용. 남는 게 없으면 null */
-  _take() {
+  _take(jumbo = false) {
     const n = this.entries.length;
     for (let k = 1; k <= n; k++) {
       const idx = (this._cursor + k) % n;
-      if (!this.entries[idx].active) {
+      const e = this.entries[idx];
+      if (!e.active && e.jumbo === jumbo) {
         this._cursor = idx;
-        return this.entries[idx];
+        return e;
       }
     }
     return null;
@@ -138,16 +138,16 @@ export class CoinPool {
 
   /** 슈트 입구에 코인을 놓는다. 이후 이동은 전부 물리가 한다. */
   /** 저장된 상태를 그대로 복원할 때 — 위치와 자세를 정확히 지정한다 */
-  placeExact(pos, quat) {
-    const entry = this._take();
+  placeExact(pos, quat, jumbo = false) {
+    const entry = this._take(jumbo);
     if (!entry) return null;
     this._activate(entry);
     this._teleport(entry, pos, quat);
     return entry;
   }
 
-  spawn(pos, vel) {
-    const entry = this._take();
+  spawn(pos, vel, jumbo = false) {
+    const entry = this._take(jumbo);
     if (!entry) return null;
 
     const q = BABYLON.Quaternion.FromEulerAngles(
@@ -181,5 +181,9 @@ export class CoinPool {
 
   get available() {
     return COIN.max - this.activeCount;
+  }
+
+  get jumboReady() {
+    return this.entries.some((e) => e.jumbo && !e.active);
   }
 }

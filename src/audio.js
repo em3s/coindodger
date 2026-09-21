@@ -90,6 +90,46 @@ export class Sfx {
     });
   }
 
+  /** 대형 동전 등장 — 낮고 묵직한 종 */
+  jumbo() {
+    this._ensure();
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    [330, 495, 660].forEach((f, i) => {
+      const o = this.ctx.createOscillator();
+      o.type = "sine";
+      o.frequency.value = f;
+      const g = this.ctx.createGain();
+      const s = t + i * 0.02;
+      g.gain.setValueAtTime(0.0001, s);
+      g.gain.exponentialRampToValueAtTime(0.2 / (i + 1), s + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, s + 1.1);
+      o.connect(g).connect(this.master);
+      o.start(s);
+      o.stop(s + 1.2);
+    });
+  }
+
+  /** 코인 러시 — 상승 아르페지오 */
+  jackpot() {
+    this._ensure();
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    [0, 4, 7, 12, 16, 19, 24].forEach((semi, i) => {
+      const o = this.ctx.createOscillator();
+      o.type = "triangle";
+      o.frequency.value = 523.25 * Math.pow(2, semi / 12);
+      const g = this.ctx.createGain();
+      const s = t + i * 0.07;
+      g.gain.setValueAtTime(0.0001, s);
+      g.gain.exponentialRampToValueAtTime(0.18, s + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, s + 0.42);
+      o.connect(g).connect(this.master);
+      o.start(s);
+      o.stop(s + 0.5);
+    });
+  }
+
   drop() {
     this._ensure();
     if (!this.ctx || this.muted) return;

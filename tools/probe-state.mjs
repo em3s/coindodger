@@ -29,7 +29,8 @@ scene.useConstantAnimationDeltaTime = true;
 // 좀 굴려서 실제 플레이 상태로 만든다
 game.wallet = 999;
 for (let i = 0; i < 3600; i++) {
-  if (i % 60 === 0) { machine.setSliderX((Math.random() - 0.5) * 1.4); game.insert(); }
+  if (i % 60 === 0) { machine.setSliderX((Math.random() - 0.5) * 1.4); game.wallet = 999; game.insert(); }
+  if (i === 1200) { game.nextJumboIn = 1; game.insert(); } // 대형 동전도 섞어서 저장 테스트
   scene.animate(); game.update(1 / 60);
 }
 machine.setSliderX(0.37);
@@ -43,7 +44,7 @@ const before = { wallet: game.wallet, won: game.won, inserted: game.inserted, sl
 
 const code = await encodeState(game);
 const rawBytes = 16 + snap.length * 10;
-console.log(`코인 ${snap.length}개`);
+console.log(`코인 ${snap.length}개 (대형 ${pool.entries.filter((e) => e.active && e.jumbo).length}개)`);
 console.log(`  원본 ${rawBytes} B → URL 문자열 ${code.length} 자 (원본 대비 ${(code.length / rawBytes * 100).toFixed(0)}%)`);
 console.log(`  전체 URL ≈ ${code.length + 40} 자`);
 

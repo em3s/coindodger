@@ -301,7 +301,11 @@ async function boot() {
     if (held.has("ArrowLeft") || held.has("KeyA")) dir -= 1;
     if (held.has("ArrowRight") || held.has("KeyD")) dir += 1;
     if (dir) machine.setSliderX(machine.getSliderX() + dir * CHUTE.slideSpeed * dt);
-    machine.marqueeMat.emissiveIntensity = 0.85 + 0.25 * Math.sin(performance.now() / 900);
+    // 코인 러시 동안 마퀴가 빠르게 번쩍인다
+    const now = performance.now();
+    machine.marqueeMat.emissiveIntensity = game.rushing
+      ? 1.5 + 1.1 * Math.sin(now / 90)
+      : 0.85 + 0.25 * Math.sin(now / 900);
 
     fpsAcc += dt;
     if (fpsAcc > 0.5) {

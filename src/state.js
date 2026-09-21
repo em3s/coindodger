@@ -8,10 +8,10 @@ import { CHUTE, PUSHER } from "./config.js";
  * 그 위에 브라우저 내장 CompressionStream('deflate-raw')을 씌우고 base64url로 만든다.
  * 해시(#)에 두므로 서버로 가지 않고 길이 제한에도 여유가 있다.
  */
-const VERSION = 2;
+const VERSION = 3;
 export const BOUNDS = { x: [-1.6, 1.6], y: [-0.8, 3.2], z: [-2.2, 2.6] };
 const HEADER = 16;
-const PER_COIN = 10;
+const PER_COIN = 11; // 위치 6 + 회전 4 + 종류 1
 
 export const q16 = (v, [lo, hi]) => Math.max(0, Math.min(65535, Math.round(((v - lo) / (hi - lo)) * 65535)));
 const dq16 = (n, [lo, hi]) => lo + (n / 65535) * (hi - lo);
@@ -89,6 +89,7 @@ export async function encodeState(game) {
       y: q16(e.mesh.position.y, BOUNDS.y),
       z: q16(e.mesh.position.z, BOUNDS.z),
       q: packQuat(e.mesh.rotationQuaternion ?? BABYLON.Quaternion.Identity()),
+      k: e.jumbo ? 1 : 0,
     }))
     .sort((a, b) => a.y - b.y || a.z - b.z || a.x - b.x);
 
@@ -104,6 +105,7 @@ export async function encodeState(game) {
     put(4, i, c.z >> 8); put(5, i, c.z & 255);
     put(6, i, (c.q >>> 24) & 255); put(7, i, (c.q >>> 16) & 255);
     put(8, i, (c.q >>> 8) & 255); put(9, i, c.q & 255);
+    put(10, i, c.k);
   }
 
   dv.setUint8(0, VERSION);
@@ -151,6 +153,7 @@ export async function decodeState(str) {
     state.coins.push({
       pos: new BABYLON.Vector3(dq16(x, BOUNDS.x), dq16(y, BOUNDS.y), dq16(z, BOUNDS.z)),
       rot: unpackQuat(q),
+      jumbo: get(10, i) === 1,
     });
   }
   return state;

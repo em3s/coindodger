@@ -100,6 +100,19 @@ function createCoinTexture(scene) {
   return tex;
 }
 
+/** 대형 동전 — 같은 금색이되 한눈에 구분되게 더 밝고 살짝 발광한다 */
+export function createJumboMaterial(scene) {
+  const m = new BABYLON.PBRMaterial("jumboMat", scene);
+  m.albedoColor = new BABYLON.Color3(1.0, 0.86, 0.5);
+  m.metallic = 1.0;
+  m.roughness = 0.3;
+  m.emissiveColor = new BABYLON.Color3(0.5, 0.33, 0.06);
+  m.emissiveIntensity = 1.0;
+  m.environmentIntensity = 1.8;
+  m.albedoTexture = createCoinTexture(scene);
+  return m;
+}
+
 export function createCoinMaterial(scene) {
   const m = pbr("coinMat", scene, {
     color: new BABYLON.Color3(1.0, 0.82, 0.42),

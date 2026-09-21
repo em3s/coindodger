@@ -1,5 +1,5 @@
 import * as BABYLON from "@babylonjs/core";
-import { SUB_STEP_MS, WALLET_START, COIN, PREFILL, DECK_Y, FIELD, FIELD_CAP, CHUTE } from "./config.js";
+import { SUB_STEP_MS, WALLET_START, COIN, PREFILL, DECK_Y, FIELD, FIELD_CAP, CHUTE, EVENT } from "./config.js";
 import { pusherZ } from "./machine.js";
 import { PUSHER as PUSHER_CFG } from "./config.js";
 
@@ -33,6 +33,10 @@ export class Game {
     this.autoDrop = false;
     this.autoTimer = 0;
     this.setupMode = false;
+    // 이벤트 상태
+    this.nextJumboIn = Game.rollJumboGap();
+    this.rushLeft = 0;
+    this.rushTimer = 0;
     this.freeCoins = 0; // 세팅 모드에서 놓은 코인
 
     this.fresh = []; // 착지음 감지 대상
@@ -136,18 +140,37 @@ export class Game {
 
   _payout(entry) {
     const p = entry.mesh.position.clone();
+    const jumbo = entry.jumbo;
+    const value = jumbo ? EVENT.jumboValue : 1;
     this.pool.despawn(entry);
-    this.wallet += 1;
-    this.won += 1;
+    this.wallet += value;
+    this.won += value;
 
     const now = performance.now() / 1000;
     this.streak = now - this.lastPayoutAt < 1.4 ? this.streak + 1 : 0;
     this.lastPayoutAt = now;
 
     this._burst.emitter = p;
-    this._burst.manualEmitCount = 16 + Math.min(this.streak, 6) * 4;
-    this.sfx.payout(this.streak);
+    this._burst.manualEmitCount = (jumbo ? 70 : 16) + Math.min(this.streak, 6) * 4;
     this.hud.pulseWon();
+    if (jumbo) this.startRush(EVENT.rushCoins);
+    else this.sfx.payout(this.streak);
+  }
+
+  static rollJumboGap() {
+    const [a, b] = EVENT.jumboEvery;
+    return a + Math.floor(Math.random() * (b - a + 1));
+  }
+
+  /** 실제로 코인을 투입구에 놓는 유일한 경로. 이후 이동은 전부 물리다. */
+  _emitCoin(jumbo) {
+    if (jumbo) {
+      const x = this.machine.getSliderX();
+      this.machine.setSliderX(Math.max(-EVENT.jumboSlide, Math.min(EVENT.jumboSlide, x)));
+    }
+    const entry = this.pool.spawn(this.machine.slotSpawn(), CHUTE.insertVel, jumbo);
+    if (entry) this.fresh.push({ entry, t: 0, vy: 0 });
+    return entry;
   }
 
   /** 투입구에 코인을 넣는다. 위치는 슬라이더가 정하고, 그 뒤는 전부 물리다. */
@@ -159,13 +182,32 @@ export class Game {
       this.hud.toast("기계가 가득 찼습니다");
       return false;
     }
-    const entry = this.pool.spawn(this.machine.slotSpawn(), CHUTE.insertVel);
+
+    const jumbo = --this.nextJumboIn <= 0 && this.pool.jumboReady;
+    const entry = this._emitCoin(jumbo);
     if (!entry) return false;
+
     this.wallet -= 1;
     this.inserted += 1;
     this.sfx.drop();
-    this.fresh.push({ entry, t: 0, vy: 0 });
+    if (jumbo) {
+      this.nextJumboIn = Game.rollJumboGap();
+      this.hud.toast("대형 동전 투입 — 배출하면 코인 러시");
+      this.sfx.jumbo();
+    }
     return true;
+  }
+
+  /** 대형 동전을 배출시키면 터진다. 공짜 코인이라 투입 수에는 넣지 않는다. */
+  startRush(n) {
+    this.rushLeft += n;
+    this.rushTimer = 0;
+    this.hud.toast(`코인 러시! 동전 ${n}개가 쏟아집니다`);
+    this.sfx.jackpot();
+  }
+
+  get rushing() {
+    return this.rushLeft > 0;
   }
 
   /** 슬라이더를 x로 옮기고 투입 (자동 투입 / 헤드리스 시뮬용) */
@@ -196,7 +238,7 @@ export class Game {
   /** URL로 받은 상태를 그대로 되살린다 */
   restoreState(state) {
     this.clearAll();
-    for (const c of state.coins) this.pool.placeExact(c.pos, c.rot);
+    for (const c of state.coins) this.pool.placeExact(c.pos, c.rot, !!c.jumbo);
     this.wallet = state.wallet;
     this.won = state.won;
     this.inserted = state.inserted;
@@ -264,6 +306,15 @@ export class Game {
 
   update(dt) {
     this._collect();
+
+    if (this.rushLeft > 0 && !this.setupMode) {
+      this.rushTimer -= dt;
+      if (this.rushTimer <= 0 && this.pool.activeCount < FIELD_CAP && this.pool.available > 0) {
+        this.rushTimer = EVENT.rushEvery;
+        this.machine.setSliderX((Math.random() - 0.5) * 2 * CHUTE.slideLimit);
+        if (this._emitCoin(false)) this.rushLeft--;
+      }
+    }
 
     if (this.autoDrop && !this.setupMode) {
       this.autoTimer -= dt;

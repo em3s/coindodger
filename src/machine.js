@@ -124,8 +124,9 @@ export function buildMachine(scene, shadowGen) {
   }
 
   // ---- 뒷벽: 밑단이 데크 바로 위에 떠 있어 푸셔 플레이트가 그 아래로 지나간다.
-  //      이 벽면이 스크레이퍼가 되어 코인을 매 사이클 앞으로 밀어낸다. ----
-  const backH = FIELD.wallH - DECK_Y;
+  //      이 벽면이 스크레이퍼가 되어 코인을 매 사이클 앞으로 밀어낸다.
+  //      높이는 낮게 — 그래야 슈트가 그 위로 코인을 넘길 수 있다. ----
+  const backH = FIELD.backWallTop - DECK_Y;
   const backWall = box(
     "backWall",
     innerW + FIELD.wallT * 2,
@@ -136,6 +137,18 @@ export function buildMachine(scene, shadowGen) {
     scene
   );
   staticBody(backWall, scene, 0.2, 0.05);
+
+  // 배경 판 (물리 없음) — 캐비닛 안쪽이 뚫려 보이지 않게
+  const backPanel = box(
+    "backPanel",
+    innerW + FIELD.wallT * 2,
+    FIELD.wallH + 1.2,
+    0.08,
+    [0, (FIELD.wallH + 1.2) / 2 - FIELD.floorT, FIELD.backZ - 1.35],
+    cabMat,
+    scene
+  );
+  decor(backPanel);
 
   // ---- 푸셔 (ANIMATED 강체 + 컴파운드 셰이프) ----
   const pusherRoot = new BABYLON.TransformNode("pusherRoot", scene);
@@ -298,19 +311,6 @@ export function buildMachine(scene, shadowGen) {
     scene
   );
   staticBody(chuteBack, scene, 0.1, 0.02);
-
-  // 스토퍼 — 경사로를 벗어난 코인의 전진을 끊어 제자리에 떨구는 면
-  const stopH = CHUTE.stopTopY - CHUTE.stopBottomY;
-  const chuteStop = box(
-    "chuteStop",
-    CHUTE.width + 0.12,
-    stopH,
-    0.07,
-    [0, CHUTE.stopBottomY + stopH / 2, CHUTE.stopZ],
-    cabMat,
-    scene
-  );
-  staticBody(chuteStop, scene, 0.15, 0.02);
 
   // 투입구 슬라이더 (실제 기종의 mechanical slider — 탭한 자리로 옮겨 간다)
   const slideRail = box(
