@@ -70,44 +70,11 @@ export function buildMachine(scene, shadowGen) {
   const midZ = (FIELD.frontZ + FIELD.backZ) / 2;
   const innerW = FIELD.halfW * 2;
 
-  // ---- 하단 플레이필드: 뒤쪽은 전폭, 앞쪽은 좁아져 양옆에 낙하구가 생긴다 ----
-  const backDepth = FIELD.gutterZ - FIELD.backZ;
-  const floor = box(
-    "floor",
-    innerW,
-    FIELD.floorT,
-    backDepth,
-    [0, -FIELD.floorT / 2, FIELD.backZ + backDepth / 2],
-    deckMat,
-    scene
-  );
+  // ---- 하단 플레이필드 (전폭) ----
+  // 옆으로 빠지는 길은 없다. 코인이 나가는 곳은 앞쪽 배출구 하나뿐이다.
+  const floor = box("floor", innerW, FIELD.floorT, depth, [0, -FIELD.floorT / 2, midZ], deckMat, scene);
   staticBody(floor, scene, 0.3, 0.08);
-
-  const frontDepth = FIELD.frontZ - FIELD.gutterZ;
-  const frontFloor = box(
-    "frontFloor",
-    FIELD.frontHalfW * 2,
-    FIELD.floorT,
-    frontDepth,
-    [0, -FIELD.floorT / 2, FIELD.gutterZ + frontDepth / 2],
-    deckMat,
-    scene
-  );
-  staticBody(frontFloor, scene, 0.3, 0.08);
-
-  // 낙하구 안쪽 벽(장식) — 코인이 빠지는 통로를 눈으로 알 수 있게
-  for (const sx of [-1, 1]) {
-    const lip = box(
-      `gutterLip${sx}`,
-      0.06,
-      0.5,
-      frontDepth,
-      [sx * (FIELD.frontHalfW + 0.03), -0.55, FIELD.gutterZ + frontDepth / 2],
-      trimMat,
-      scene
-    );
-    decor(lip);
-  }
+  const frontFloor = floor; // 예전 낙하구 구조의 흔적 — 픽킹 대상 목록에서 함께 쓴다
 
   // ---- 좌우 벽 ----
   for (const sx of [-1, 1]) {
@@ -360,7 +327,7 @@ export function buildMachine(scene, shadowGen) {
   // ---- 그림자 ----
   if (shadowGen) {
     // 슈트는 그림자 캐스터에서 뺀다 — 얕은 각도에서 자기 그림자로 새까매진다
-    for (const m of [pusherBody, pusherPlate, backWall, trayLip, frontFloor]) {
+    for (const m of [pusherBody, pusherPlate, backWall, trayLip]) {
       shadowGen.addShadowCaster(m, false);
     }
   }

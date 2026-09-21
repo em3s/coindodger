@@ -132,9 +132,9 @@ export class Game {
       if (!e.active) continue;
       const p = e.mesh.position;
       if (p.y > this.payoutY) continue;
-      const paid = p.z > FIELD.frontZ - 0.25 && Math.abs(p.x) < FIELD.frontHalfW + 0.12;
+      const paid = p.z > FIELD.frontZ - 0.25;
       if (paid && !this.setupMode) this._payout(e);
-      else this.pool.despawn(e); // 옆 낙하구로 빠졌거나 세팅 중
+      else this.pool.despawn(e); // 어쩌다 장외로 나갔거나 세팅 중
     }
   }
 

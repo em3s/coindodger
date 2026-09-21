@@ -12,11 +12,7 @@ export const SUB_STEP_MS = 1000 / 240; // 240Hz 고정 서브스텝
 export const FIELD = {
   halfW: 1.25, // 폭 25cm
   backZ: -1.6,
-  frontZ: 1.8,
-  // 앞쪽 구간은 바닥이 좁아져 양옆이 낙하구가 된다.
-  // 실제 기계와 같은 구조로, 밀려난 코인 일부가 여기로 빠지며 개체수가 스스로 조절된다.
-  gutterZ: 0.6,
-  frontHalfW: 0.97,
+  frontZ: 1.6,
   floorT: 0.3,
   wallH: 2.3,
   backWallTop: 1.3, // 스크레이퍼 역할만 하면 되므로 낮게 — 슈트가 그 위로 지나간다
