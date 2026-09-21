@@ -8,7 +8,6 @@ export class Hud {
       insert: root.querySelector("#btn-insert"),
       auto: root.querySelector("#btn-auto"),
       sound: root.querySelector("#btn-sound"),
-      reset: root.querySelector("#btn-reset"),
       setup: root.querySelector("#btn-setup"),
       panel: root.querySelector("#setup-panel"),
       presets: root.querySelector("#presets"),

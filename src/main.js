@@ -33,7 +33,8 @@ async function boot() {
 
   createEnvironment(scene);
 
-  // ---------- 카메라 ----------
+  // ---------- 카메라 (고정 시점) ----------
+  // 사용자가 돌리거나 당길 수 없다. 화면비에 맞춰 반경만 다시 잡는다.
   const camera = new BABYLON.ArcRotateCamera(
     "cam",
     CAMERA.alpha,
@@ -42,28 +43,18 @@ async function boot() {
     new V3(...CAMERA.target),
     scene
   );
-  camera.attachControl(canvas, true);
-  camera.lowerBetaLimit = CAMERA.betaMin;
-  camera.upperBetaLimit = CAMERA.betaMax;
-  // 화면비에 맞춰 기계가 항상 화면에 꽉 차게 반경을 잡는다
+  camera.fov = CAMERA.fov;
+  camera.minZ = 0.1;
+  camera.maxZ = 200;
+  camera.inputs.clear(); // 마우스·터치·휠 입력을 전부 뗀다
+
   const fitCamera = () => {
     const aspect = engine.getAspectRatio(camera) || 1;
     const vHalf = Math.tan(camera.fov / 2);
     const hHalf = vHalf * aspect;
-    const r = Math.max(CAMERA.fitHalfW / hHalf, CAMERA.fitHalfH / vHalf) * CAMERA.fitPad;
-    camera.lowerRadiusLimit = r * 0.5;
-    camera.upperRadiusLimit = r * 1.6;
-    return r;
+    camera.radius = Math.max(CAMERA.fitHalfW / hHalf, CAMERA.fitHalfH / vHalf) * CAMERA.fitPad;
   };
-  camera.radius = fitCamera();
-  camera.lowerAlphaLimit = CAMERA.alpha - CAMERA.alphaSpread;
-  camera.upperAlphaLimit = CAMERA.alpha + CAMERA.alphaSpread;
-  camera.wheelDeltaPercentage = 0.02;
-  camera.panningSensibility = 0;
-  camera.inertia = 0.82;
-  camera.minZ = 0.1;
-  camera.maxZ = 200;
-  camera.fov = 0.62;
+  fitCamera();
 
   // ---------- 조명 ----------
   const key = new BABYLON.DirectionalLight("key", new V3(-0.32, -1, 0.34), scene);
@@ -170,8 +161,6 @@ async function boot() {
 
   // ---------- 입력 ----------
   // 조준은 마우스로 아무 데나 찍는 게 아니라, 실제 기종처럼 투입구 슬라이더를 좌우로 민다.
-  let lastInteract = performance.now();
-  let userZoomed = false;
   let dragMode = null; // 'slider' | null
   const held = new Set();
 
@@ -197,12 +186,10 @@ async function boot() {
       case BABYLON.PointerEventTypes.POINTERDOWN: {
         downAt = performance.now();
         downPos = { x: e.clientX, y: e.clientY };
-        lastInteract = performance.now();
         sfx.resume();
         const hit = scene.pick(scene.pointerX, scene.pointerY, isSliderMesh);
         if (hit?.hit) {
           dragMode = "slider";
-          camera.detachControl();
           pointerToSlider();
         }
         break;
@@ -215,7 +202,6 @@ async function boot() {
         const tapped = moved < 6 && performance.now() - downAt < 450;
         if (dragMode === "slider") {
           dragMode = null;
-          camera.attachControl(canvas, true);
           if (tapped) game.insert(); // 투입구를 톡 누르면 투입
         } else if (tapped) {
           if (game.setupMode) {
@@ -225,13 +211,8 @@ async function boot() {
             game.insert();
           }
         }
-        lastInteract = performance.now();
         break;
       }
-      case BABYLON.PointerEventTypes.POINTERWHEEL:
-        lastInteract = performance.now();
-        userZoomed = true;
-        break;
     }
   });
 
@@ -248,9 +229,6 @@ async function boot() {
         break;
       case "KeyT":
         toggleAuto();
-        break;
-      case "KeyR":
-        resetCamera();
         break;
       case "KeyM":
         toggleSound();
@@ -273,13 +251,6 @@ async function boot() {
     sfx.setMuted(!sfx.muted);
     hud.setMuted(sfx.muted);
   };
-  const resetCamera = () => {
-    camera.alpha = CAMERA.alpha;
-    camera.beta = CAMERA.beta;
-    camera.radius = fitCamera();
-    camera.target.copyFromFloats(...CAMERA.target);
-    userZoomed = false;
-  };
   const toggleSetup = () => {
     game.setSetupMode(!game.setupMode);
     hud.setSetup(game.setupMode);
@@ -291,7 +262,6 @@ async function boot() {
   });
   hud.el.auto.addEventListener("click", toggleAuto);
   hud.el.sound.addEventListener("click", toggleSound);
-  hud.el.reset.addEventListener("click", resetCamera);
   hud.el.setup.addEventListener("click", toggleSetup);
   // 투입 위치 슬라이더 (터치에서도 쓸 수 있는 실제 조작부)
   const sliderInput = hud.el.slider;
@@ -301,7 +271,6 @@ async function boot() {
   };
   sliderInput.addEventListener("input", () => {
     machine.setSliderX(parseFloat(sliderInput.value) * CHUTE.slideLimit);
-    lastInteract = performance.now();
   });
 
   hud.el.share.addEventListener("click", async () => {
@@ -338,18 +307,9 @@ async function boot() {
     let dir = 0;
     if (held.has("ArrowLeft") || held.has("KeyA")) dir -= 1;
     if (held.has("ArrowRight") || held.has("KeyD")) dir += 1;
-    if (dir) {
-      machine.setSliderX(machine.getSliderX() + dir * CHUTE.slideSpeed * dt);
-      lastInteract = performance.now();
-    }
+    if (dir) machine.setSliderX(machine.getSliderX() + dir * CHUTE.slideSpeed * dt);
     syncSliderInput();
     machine.marqueeMat.emissiveIntensity = 0.85 + 0.25 * Math.sin(performance.now() / 900);
-
-    // 오래 가만히 두면 카메라가 아주 느리게 흔들린다
-    const idle = (performance.now() - lastInteract) / 1000;
-    if (idle > 8) {
-      camera.alpha = CAMERA.alpha + Math.sin(performance.now() / 6400) * 0.07;
-    }
 
     fpsAcc += dt;
     if (fpsAcc > 0.5) {
@@ -369,12 +329,13 @@ async function boot() {
   setTimeout(() => document.getElementById("loader").remove(), 800);
 
   engine.runRenderLoop(() => scene.render());
-  window.addEventListener("resize", () => {
+  // 화면 회전·리사이즈 때 다시 맞춘다
+  const refit = () => {
     engine.resize();
-    const r = fitCamera();
-    camera.radius = Math.min(Math.max(camera.radius, camera.lowerRadiusLimit), camera.upperRadiusLimit);
-    if (!userZoomed) camera.radius = r;
-  });
+    fitCamera();
+  };
+  window.addEventListener("resize", refit);
+  window.addEventListener("orientationchange", () => setTimeout(refit, 150));
 
   hud.toast("동전을 넣어보세요");
   return scene;
