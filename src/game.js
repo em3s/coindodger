@@ -34,7 +34,6 @@ export class Game {
     this.autoTimer = 0;
     this.setupMode = false;
     this.freeCoins = 0; // 세팅 모드에서 놓은 코인
-    this.refillTimer = 0;
 
     this.fresh = []; // 착지음 감지 대상
     // 배출 판정은 물리 트리거 대신 위치로 한다.
@@ -206,6 +205,12 @@ export class Game {
     return state.coins.length;
   }
 
+  /** 동전은 자동으로 채워지지 않는다. 명시적으로 눌렀을 때만 늘어난다. */
+  addCoins(n) {
+    this.wallet += n;
+    this.hud.toast(`동전 ${n}개를 추가했습니다`);
+  }
+
   clearAll() {
     for (const e of this.pool.entries) if (e.active) this.pool.despawn(e);
   }
@@ -284,18 +289,6 @@ export class Game {
         continue;
       }
       f.vy = vy;
-    }
-
-    // 지갑이 비면 잠시 후 조용히 보충한다 (힐링 게임 — 실패 상태 없음)
-    if (this.wallet <= 0) {
-      this.refillTimer += dt;
-      if (this.refillTimer > 2.5) {
-        this.wallet = 30;
-        this.refillTimer = 0;
-        this.hud.toast("동전을 보충했습니다");
-      }
-    } else {
-      this.refillTimer = 0;
     }
 
     this.hud.update(this);

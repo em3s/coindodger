@@ -45,6 +45,14 @@ const hudStub = {
 
 const seconds = Number(process.argv[2] ?? 240);
 const dropEvery = Number(process.argv[3] ?? 1.0);
+// 투입 x 패턴: "spread"(기본, 좌우로 흩뿌림) | "sides"(좌우 끝 두 지점만) | "center"
+const xMode = process.argv[4] ?? "spread";
+let sideFlip = 0;
+const pickX = () => {
+  if (xMode === "sides") return (sideFlip++ % 2 ? 1 : -1) * 0.85;
+  if (xMode === "center") return (Math.random() - 0.5) * 0.2;
+  return (Math.random() - 0.5) * 1.5;
+};
 
 const engine = new BABYLON.NullEngine();
 const scene = new BABYLON.Scene(engine);
@@ -78,7 +86,7 @@ console.log("초  | 투입  획득  회수율 | 필드  최대 | 하단/상단 �
 for (let i = 0; i < frames; i++) {
   if (i > 300 && i % dropFrames === 0) {
     if (game.wallet < 5) game.wallet = 999;
-    game.drop((Math.random() - 0.5) * 1.5);
+    game.drop(pickX());
   }
   try {
     scene.animate();

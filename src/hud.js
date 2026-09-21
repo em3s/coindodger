@@ -1,20 +1,25 @@
 export class Hud {
   constructor(root) {
+    const $ = (sel) => root.querySelector(sel);
     this.el = {
-      wallet: root.querySelector("#stat-wallet"),
-      won: root.querySelector("#stat-won"),
-      field: root.querySelector("#stat-field"),
-      wonCard: root.querySelector("#card-won"),
-      insert: root.querySelector("#btn-insert"),
-      auto: root.querySelector("#btn-auto"),
-      sound: root.querySelector("#btn-sound"),
-      setup: root.querySelector("#btn-setup"),
-      panel: root.querySelector("#setup-panel"),
-      presets: root.querySelector("#presets"),
-      slider: root.querySelector("#slider"),
-      share: root.querySelector("#btn-share"),
-      toast: root.querySelector("#toast"),
-      fps: root.querySelector("#fps"),
+      wallet: $("#stat-wallet"),
+      inserted: $("#stat-in"),
+      won: $("#stat-won"),
+      rate: $("#stat-rate"),
+      ledger: $(".ledger"),
+      settingsBtn: $("#btn-settings"),
+      closeBtn: $("#btn-close"),
+      sheet: $("#settings"),
+      refill: $("#btn-refill"),
+      auto: $("#btn-auto"),
+      sound: $("#btn-sound"),
+      share: $("#btn-share"),
+      setup: $("#btn-setup"),
+      setupBody: $("#setup-body"),
+      presets: $("#presets"),
+      hint: $("#hint"),
+      toast: $("#toast"),
+      fps: $("#fps"),
     };
     this._last = {};
     this._toastTimer = null;
@@ -28,9 +33,15 @@ export class Hud {
 
   update(game) {
     this._set(this.el.wallet, "w", String(game.wallet));
+    this._set(this.el.inserted, "i", String(game.inserted));
     this._set(this.el.won, "g", String(game.won));
-    this._set(this.el.field, "f", `${game.onField} / ${game.capacity}`);
-    this.el.insert.disabled = game.wallet <= 0 || game.setupMode;
+    const rate = game.inserted ? Math.round((game.won / game.inserted) * 100) : null;
+    this._set(this.el.rate, "r", rate === null ? "—" : `${rate}%`);
+    if (rate !== null) {
+      this.el.rate.classList.toggle("up", rate >= 100);
+      this.el.rate.classList.toggle("down", rate < 60);
+    }
+    this.el.ledger.classList.toggle("broke", game.wallet <= 0);
   }
 
   setFps(v) {
@@ -38,7 +49,7 @@ export class Hud {
   }
 
   pulseWon() {
-    const c = this.el.wonCard;
+    const c = this.el.won.parentElement;
     c.classList.remove("pulse");
     void c.offsetWidth;
     c.classList.add("pulse");
@@ -51,20 +62,36 @@ export class Hud {
     this._toastTimer = setTimeout(() => this.el.toast.classList.remove("show"), 1800);
   }
 
-  setAuto(on) {
-    this.el.auto.classList.toggle("on", on);
-    this.el.auto.setAttribute("aria-pressed", String(on));
+  hideHint() {
+    this.el.hint.classList.add("gone");
   }
 
-  setSetup(on) {
-    this.el.setup.classList.toggle("on", on);
-    this.el.setup.setAttribute("aria-pressed", String(on));
-    this.el.panel.classList.toggle("open", on);
-    this.el.insert.disabled = on;
+  setSettingsOpen(on) {
+    this.el.sheet.classList.toggle("open", on);
+    this.el.sheet.setAttribute("aria-hidden", String(!on));
+    this.el.settingsBtn.setAttribute("aria-expanded", String(on));
+  }
+
+  get settingsOpen() {
+    return this.el.sheet.classList.contains("open");
+  }
+
+  _toggle(btn, on, labels = ["꺼짐", "켜짐"]) {
+    btn.classList.toggle("on", on);
+    btn.setAttribute("aria-pressed", String(on));
+    btn.textContent = on ? labels[1] : labels[0];
+  }
+
+  setAuto(on) {
+    this._toggle(this.el.auto, on);
   }
 
   setMuted(muted) {
-    this.el.sound.classList.toggle("off", muted);
-    this.el.sound.textContent = muted ? "🔇 소리 꺼짐" : "🔊 소리 켜짐";
+    this._toggle(this.el.sound, !muted);
+  }
+
+  setSetup(on) {
+    this._toggle(this.el.setup, on);
+    this.el.setupBody.classList.toggle("open", on);
   }
 }

@@ -1,7 +1,7 @@
 import * as BABYLON from "@babylonjs/core";
 import HavokPhysics from "@babylonjs/havok";
 
-import { GRAVITY, SUB_STEP_MS, CAMERA, CHUTE, BASE_URL } from "./config.js";
+import { GRAVITY, SUB_STEP_MS, CAMERA, CHUTE, DECK_Y, BASE_URL } from "./config.js";
 import { createEnvironment } from "./materials.js";
 import { buildMachine } from "./machine.js";
 import { CoinPool } from "./coins.js";
@@ -160,22 +160,30 @@ async function boot() {
   if (!restored) game.prefill();
 
   // ---------- 입력 ----------
-  // 조준은 마우스로 아무 데나 찍는 게 아니라, 실제 기종처럼 투입구 슬라이더를 좌우로 민다.
-  let dragMode = null; // 'slider' | null
+  // 화면을 탭하면 그 자리로 투입구가 옮겨 가고 동전이 들어간다.
+  // 별도의 조준 UI를 두지 않는다 — 화면에는 기계만 남긴다.
+  let dragMode = null;
   const held = new Set();
 
-  const sliderPlane = BABYLON.Plane.FromPositionAndNormal(
-    new V3(0, CHUTE.slotY, CHUTE.slotZ),
-    new V3(0, 0, 1)
-  );
-  const isSliderMesh = (m) => m === machine.knob || m === machine.meshes.slotHousing || m === machine.meshes.slotMouth;
+  // 덱 높이의 수평면. 탭한 지점을 그대로 x로 읽는다.
+  const aimPlane = BABYLON.Plane.FromPositionAndNormal(new V3(0, DECK_Y, 0), new V3(0, 1, 0));
   const fieldMeshes = [machine.meshes.floor, machine.meshes.frontFloor, machine.meshes.pusherPlate];
 
-  const pointerToSlider = () => {
+  const pointerToX = () => {
     const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, BABYLON.Matrix.Identity(), camera);
-    const dist = ray.intersectsPlane(sliderPlane);
-    if (dist === null) return;
-    machine.setSliderX(ray.origin.add(ray.direction.scale(dist)).x);
+    const dist = ray.intersectsPlane(aimPlane);
+    if (dist === null || dist < 0) return null;
+    return ray.origin.add(ray.direction.scale(dist)).x;
+  };
+
+  let firstInsertDone = false;
+  const insertAt = (x) => {
+    if (x !== null) machine.setSliderX(x);
+    if (!game.insert()) return;
+    if (!firstInsertDone) {
+      firstInsertDone = true;
+      hud.hideHint();
+    }
   };
 
   let downAt = 0;
@@ -183,33 +191,24 @@ async function boot() {
   scene.onPointerObservable.add((info) => {
     const e = info.event;
     switch (info.type) {
-      case BABYLON.PointerEventTypes.POINTERDOWN: {
+      case BABYLON.PointerEventTypes.POINTERDOWN:
         downAt = performance.now();
         downPos = { x: e.clientX, y: e.clientY };
+        dragMode = null;
         sfx.resume();
-        const hit = scene.pick(scene.pointerX, scene.pointerY, isSliderMesh);
-        if (hit?.hit) {
-          dragMode = "slider";
-          pointerToSlider();
-        }
-        break;
-      }
-      case BABYLON.PointerEventTypes.POINTERMOVE:
-        if (dragMode === "slider") pointerToSlider();
         break;
       case BABYLON.PointerEventTypes.POINTERUP: {
         const moved = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y);
-        const tapped = moved < 6 && performance.now() - downAt < 450;
-        if (dragMode === "slider") {
-          dragMode = null;
-          if (tapped) game.insert(); // 투입구를 톡 누르면 투입
-        } else if (tapped) {
-          if (game.setupMode) {
-            const hit = scene.pick(scene.pointerX, scene.pointerY, (m) => fieldMeshes.includes(m));
-            if (hit?.hit && hit.pickedPoint) game.placeCoinAt(hit.pickedPoint);
-          } else {
-            game.insert();
-          }
+        if (moved > 8 || performance.now() - downAt > 450) break;
+        if (hud.settingsOpen) {
+          hud.setSettingsOpen(false);
+          break;
+        }
+        if (game.setupMode) {
+          const hit = scene.pick(scene.pointerX, scene.pointerY, (m) => fieldMeshes.includes(m));
+          if (hit?.hit && hit.pickedPoint) game.placeCoinAt(hit.pickedPoint);
+        } else {
+          insertAt(pointerToX());
         }
         break;
       }
@@ -225,7 +224,7 @@ async function boot() {
       case "Space":
         e.preventDefault();
         sfx.resume();
-        game.insert();
+        insertAt(null);
         break;
       case "KeyT":
         toggleAuto();
@@ -235,6 +234,9 @@ async function boot() {
         break;
       case "KeyE":
         toggleSetup();
+        break;
+      case "Escape":
+        hud.setSettingsOpen(false);
         break;
       default:
         break;
@@ -254,23 +256,18 @@ async function boot() {
   const toggleSetup = () => {
     game.setSetupMode(!game.setupMode);
     hud.setSetup(game.setupMode);
+    if (game.setupMode) hud.setSettingsOpen(true);
   };
 
-  hud.el.insert.addEventListener("click", () => {
-    sfx.resume();
-    game.insert();
-  });
+  hud.el.settingsBtn.addEventListener("click", () => hud.setSettingsOpen(!hud.settingsOpen));
+  hud.el.closeBtn.addEventListener("click", () => hud.setSettingsOpen(false));
+  hud.el.refill.addEventListener("click", () => game.addCoins(50));
   hud.el.auto.addEventListener("click", toggleAuto);
   hud.el.sound.addEventListener("click", toggleSound);
   hud.el.setup.addEventListener("click", toggleSetup);
-  // 투입 위치 슬라이더 (터치에서도 쓸 수 있는 실제 조작부)
-  const sliderInput = hud.el.slider;
-  const syncSliderInput = () => {
-    const v = machine.getSliderX() / CHUTE.slideLimit;
-    if (Math.abs(parseFloat(sliderInput.value) - v) > 0.004) sliderInput.value = String(v);
-  };
-  sliderInput.addEventListener("input", () => {
-    machine.setSliderX(parseFloat(sliderInput.value) * CHUTE.slideLimit);
+  hud.el.presets.addEventListener("click", (ev) => {
+    const key = ev.target?.dataset?.preset;
+    if (key) game.applyPreset(key);
   });
 
   hud.el.share.addEventListener("click", async () => {
@@ -289,10 +286,6 @@ async function boot() {
     }
   });
 
-  hud.el.presets.addEventListener("click", (ev) => {
-    const key = ev.target?.dataset?.preset;
-    if (key) game.applyPreset(key);
-  });
   hud.setSetup(false);
   hud.setAuto(false);
   hud.setMuted(false);
@@ -308,7 +301,6 @@ async function boot() {
     if (held.has("ArrowLeft") || held.has("KeyA")) dir -= 1;
     if (held.has("ArrowRight") || held.has("KeyD")) dir += 1;
     if (dir) machine.setSliderX(machine.getSliderX() + dir * CHUTE.slideSpeed * dt);
-    syncSliderInput();
     machine.marqueeMat.emissiveIntensity = 0.85 + 0.25 * Math.sin(performance.now() / 900);
 
     fpsAcc += dt;

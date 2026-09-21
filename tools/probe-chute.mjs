@@ -31,7 +31,7 @@ scene.useConstantAnimationDeltaTime = true;
 const landings = [];
 for (let k = 0; k < 12; k++) {
   game.clearAll();
-  machine.setSliderX([-0.6, 0, 0.6][k % 3]);
+  machine.setSliderX([-0.88, -0.45, 0, 0.45, 0.88][k % 5]);
   game.wallet = 10;
   game.insert();
   const e = pool.entries.find((x) => x.active);

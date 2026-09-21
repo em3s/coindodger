@@ -250,9 +250,11 @@ export function buildMachine(scene, shadowGen) {
   glass.rotation.y = Math.PI;
   decor(glass);
 
-  // ---- 투입 슈트 ----
+  // ---- 투입 슈트 (기계 뒤쪽) ----
   // 실제 기계와 같은 경로: 투입구에 넣으면 코인이 경사로를 미끄러져 내려가
-  // 뒷벽에 맞고 덱 위로 떨어진다. 코인 위치를 코드로 옮기는 부분은 없다.
+  // 스토퍼에 막혀 전진이 끊기고 덱 위로 떨어진다. 코인 위치를 코드로 옮기는 부분은 없다.
+  //
+  // 슈트 전체가 착지 지점보다 뒤에 있다 — 카메라가 앞에 있으니 플레이필드를 가릴 수 없다.
   const chuteMat = createDeckMaterial(scene, new BABYLON.Color3(0.72, 0.75, 0.8));
   chuteMat.metallic = 0.25;
   chuteMat.roughness = 0.45;
@@ -285,38 +287,50 @@ export function buildMachine(scene, shadowGen) {
     staticBody(rail, scene, 0.1, 0.02);
   }
 
-  // 경사로 맨 위 막이 — 넣은 코인이 뒤로 빠지지 않게 (경사로 위끝 바로 뒤에 세운다)
+  // 경사로 맨 뒤 막이 — 넣은 코인이 뒤로 빠지지 않게
   const chuteBack = box(
     "chuteBack",
     CHUTE.width + 0.12,
-    0.16,
+    0.26,
     0.06,
-    [0, CHUTE.topY + 0.08, CHUTE.topZ + 0.1],
+    [0, CHUTE.topY + 0.11, CHUTE.topZ - 0.08],
     cabMat,
     scene
   );
   staticBody(chuteBack, scene, 0.1, 0.02);
 
-  // 투입구 슬라이더 (좌우로 밀 수 있는 실제 기종의 mechanical slider)
+  // 스토퍼 — 경사로를 벗어난 코인의 전진을 끊어 제자리에 떨구는 면
+  const stopH = CHUTE.stopTopY - CHUTE.stopBottomY;
+  const chuteStop = box(
+    "chuteStop",
+    CHUTE.width + 0.12,
+    stopH,
+    0.07,
+    [0, CHUTE.stopBottomY + stopH / 2, CHUTE.stopZ],
+    cabMat,
+    scene
+  );
+  staticBody(chuteStop, scene, 0.15, 0.02);
+
+  // 투입구 슬라이더 (실제 기종의 mechanical slider — 탭한 자리로 옮겨 간다)
   const slideRail = box(
     "slideRail",
     CHUTE.slideLimit * 2 + 0.5,
     0.07,
     0.1,
-    [0, CHUTE.slotY + 0.13, CHUTE.slotZ],
+    [0, CHUTE.slotY + 0.15, CHUTE.slotZ],
     trimMat,
     scene
   );
   decor(slideRail);
 
-  // 하우징은 낮게 — 높으면 슈트를 타고 내려가는 동전을 가린다
   const slotHousing = box("slotHousing", 0.4, 0.09, 0.2, [0, CHUTE.slotY, CHUTE.slotZ], cabMat, scene);
   decor(slotHousing);
 
   const slotMouthMat = createNeonMaterial(scene, new BABYLON.Color3(1.0, 0.72, 0.22));
   const slotMouth = box(
     "slotMouth",
-    0.2,
+    0.22,
     0.04,
     0.03,
     [0, CHUTE.slotY + 0.05, CHUTE.slotZ + 0.11],
@@ -331,7 +345,7 @@ export function buildMachine(scene, shadowGen) {
     scene
   );
   knob.material = trimMat;
-  knob.position.set(0, CHUTE.slotY + 0.17, CHUTE.slotZ);
+  knob.position.set(0, CHUTE.slotY + 0.19, CHUTE.slotZ);
 
   const sliderParts = [slotHousing, slotMouth, knob];
   let sliderX = 0;
