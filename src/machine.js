@@ -4,8 +4,7 @@ import {
   createDeckMaterial,
   createCabinetMaterial,
   createTrimMaterial,
-  createGlassMaterial,
-  createNeonMaterial,
+    createNeonMaterial,
 } from "./materials.js";
 
 const V3 = BABYLON.Vector3;
@@ -64,7 +63,6 @@ export function buildMachine(scene, shadowGen) {
   const bodyDeckMat = createDeckMaterial(scene, new BABYLON.Color3(0.19, 0.21, 0.26));
   const cabMat = createCabinetMaterial(scene);
   const trimMat = createTrimMaterial(scene);
-  const glassMat = createGlassMaterial(scene);
 
   const depth = FIELD.frontZ - FIELD.backZ;
   const midZ = (FIELD.frontZ + FIELD.backZ) / 2;
@@ -219,17 +217,6 @@ export function buildMachine(scene, shadowGen) {
     decor(strip);
   }
 
-  // 전면 유리 (물리 없음 — 순수 장식)
-  const glass = BABYLON.MeshBuilder.CreatePlane(
-    "glass",
-    { width: innerW + 0.4, height: FIELD.wallH + 1.0 },
-    scene
-  );
-  glass.material = glassMat;
-  glass.position.set(0, (FIELD.wallH + 1.0) / 2 - FIELD.floorT, FIELD.frontZ + 1.45);
-  glass.rotation.y = Math.PI;
-  decor(glass);
-
   // ---- 투입 슈트 (기계 뒤쪽) ----
   // 실제 기계와 같은 경로: 투입구에 넣으면 코인이 경사로를 미끄러져 내려가
   // 스토퍼에 막혀 전진이 끊기고 덱 위로 떨어진다. 코인 위치를 코드로 옮기는 부분은 없다.
@@ -342,7 +329,7 @@ export function buildMachine(scene, shadowGen) {
     marqueeMat,
     neonStripMat,
     trayY,
-    meshes: { floor, frontFloor, pusherBody, pusherPlate, glass, marquee, chuteFloor, slotHousing, slotMouth, knob },
+    meshes: { floor, frontFloor, pusherBody, pusherPlate, marquee, chuteFloor, slotHousing, slotMouth, knob },
   };
 }
 

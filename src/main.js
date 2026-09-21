@@ -159,6 +159,35 @@ async function boot() {
   }
   if (!restored) game.prefill();
 
+  // ---------- 방치 모드 ----------
+  // 기본은 딤 처리된 화면에 시계만. 뒤에서 기계는 계속 돈다.
+  // 화면을 만지면 5초간 깨어난다.
+  const WAKE_MS = 5000;
+  let wakeUntil = 0;
+  const isAwake = () => performance.now() < wakeUntil;
+  const wake = () => {
+    wakeUntil = performance.now() + WAKE_MS;
+    document.body.classList.add("awake");
+  };
+
+  const clockTime = document.getElementById("clock-time");
+  const clockDate = document.getElementById("clock-date");
+  let lastMinute = -1;
+  const updateClock = () => {
+    const d = new Date();
+    const m = d.getMinutes();
+    clockTime.textContent = `${String(d.getHours()).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    if (m !== lastMinute) {
+      lastMinute = m;
+      clockDate.textContent = d.toLocaleDateString("ko-KR", {
+        month: "long",
+        day: "numeric",
+        weekday: "long",
+      });
+    }
+  };
+  updateClock();
+
   // ---------- 입력 ----------
   // 화면을 탭하면 그 자리로 투입구가 옮겨 가고 동전이 들어간다.
   // 별도의 조준 UI를 두지 않는다 — 화면에는 기계만 남긴다.
@@ -188,10 +217,13 @@ async function boot() {
 
   let downAt = 0;
   let downPos = { x: 0, y: 0 };
+  let wasAwakeOnDown = false;
   scene.onPointerObservable.add((info) => {
     const e = info.event;
     switch (info.type) {
       case BABYLON.PointerEventTypes.POINTERDOWN:
+        wasAwakeOnDown = isAwake(); // 깨우기 전에 이전 상태를 기억해 둔다
+        wake();
         downAt = performance.now();
         downPos = { x: e.clientX, y: e.clientY };
         dragMode = null;
@@ -202,8 +234,11 @@ async function boot() {
         if (moved > 8 || performance.now() - downAt > 450) break;
         if (hud.settingsOpen) {
           hud.setSettingsOpen(false);
+          wake();
           break;
         }
+        if (!wasAwakeOnDown) break; // 딤 상태에서의 첫 터치는 깨우기만 한다
+        wake();
         if (game.setupMode) {
           const hit = scene.pick(scene.pointerX, scene.pointerY, (m) => fieldMeshes.includes(m));
           if (hit?.hit && hit.pickedPoint) game.placeCoinAt(hit.pickedPoint);
@@ -219,6 +254,7 @@ async function boot() {
   window.addEventListener("blur", () => held.clear());
   window.addEventListener("keydown", (e) => {
     held.add(e.code);
+    wake();
     if (e.repeat) return;
     switch (e.code) {
       case "Space":
@@ -259,7 +295,10 @@ async function boot() {
     if (game.setupMode) hud.setSettingsOpen(true);
   };
 
-  hud.el.settingsBtn.addEventListener("click", () => hud.setSettingsOpen(!hud.settingsOpen));
+  hud.el.settingsBtn.addEventListener("click", () => {
+    wake();
+    hud.setSettingsOpen(!hud.settingsOpen);
+  });
   hud.el.closeBtn.addEventListener("click", () => hud.setSettingsOpen(false));
   hud.el.refill.addEventListener("click", () => game.addCoins(50));
   hud.el.auto.addEventListener("click", toggleAuto);
@@ -287,11 +326,13 @@ async function boot() {
   });
 
   hud.setSetup(false);
-  hud.setAuto(false);
   hud.setMuted(false);
+  game.autoDrop = true; // 방치형이 기본이다
+  hud.setAuto(true);
 
   // ---------- 루프 ----------
   let fpsAcc = 0;
+  let clockAcc = 0;
   scene.onBeforeRenderObservable.add(() => {
     const dt = Math.min(engine.getDeltaTime() / 1000, 0.05);
     game.update(dt);
@@ -306,6 +347,16 @@ async function boot() {
     machine.marqueeMat.emissiveIntensity = game.rushing
       ? 1.5 + 1.1 * Math.sin(now / 90)
       : 0.85 + 0.25 * Math.sin(now / 900);
+
+    // 설정 시트를 열어두거나 세팅 모드면 계속 깨어 있는다
+    if (hud.settingsOpen || game.setupMode) wake();
+    else if (!isAwake()) document.body.classList.remove("awake");
+
+    clockAcc += dt;
+    if (clockAcc > 1) {
+      clockAcc = 0;
+      updateClock();
+    }
 
     fpsAcc += dt;
     if (fpsAcc > 0.5) {
@@ -324,7 +375,15 @@ async function boot() {
   hudRoot.hidden = false;
   setTimeout(() => document.getElementById("loader").remove(), 800);
 
-  engine.runRenderLoop(() => scene.render());
+  // 딤 상태에선 30fps로 그린다 — 물리는 실시간 델타로 계속 정확히 돈다.
+  // 방치해두는 화면이라 이 절반이 그대로 전력 절약이 된다.
+  let lastDraw = 0;
+  engine.runRenderLoop(() => {
+    const now = performance.now();
+    if (!isAwake() && now - lastDraw < 32) return;
+    lastDraw = now;
+    scene.render();
+  });
   // 화면 회전·리사이즈 때 다시 맞춘다
   const refit = () => {
     engine.resize();

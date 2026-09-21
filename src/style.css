@@ -337,3 +337,69 @@ html, body {
   .item b { font-size: 9px; letter-spacing: 0; }
   .item i { font-size: 13px; }
 }
+
+/* ---------- 방치 모드: 딤 + 시계 ----------
+   기본은 어두운 화면에 시계만 떠 있고, 뒤에서 기계가 계속 돈다.
+   화면을 만지면 5초간 깨어나 기계와 HUD가 또렷해진다. */
+#dim {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 45%, rgba(5, 6, 10, 0.5) 0%, rgba(5, 6, 10, 0.82) 100%);
+  opacity: 1;
+  transition: opacity 0.9s ease;
+  z-index: 1;
+}
+body.awake #dim { opacity: 0; transition: opacity 0.25s ease; }
+
+#hud { z-index: 2; }
+
+#clock {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+#clock-time {
+  font-size: clamp(64px, 17vw, 168px);
+  font-weight: 200;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: rgba(244, 241, 234, 0.92);
+  text-shadow: 0 6px 40px rgba(0, 0, 0, 0.6);
+}
+#clock-date {
+  font-size: clamp(12px, 3vw, 15px);
+  letter-spacing: 0.3em;
+  color: rgba(244, 241, 234, 0.42);
+}
+/* 깨어 있을 땐 시계가 물러나 기계에 자리를 내준다 */
+body.awake #clock {
+  opacity: 0.16;
+  transform: translate(-50%, -50%) scale(0.92);
+}
+
+/* 딤 상태에선 조작 UI를 숨긴다 */
+.bar,
+#hint,
+#fps {
+  transition: opacity 0.5s ease;
+}
+body:not(.awake) .bar,
+body:not(.awake) #hint,
+body:not(.awake) #fps {
+  opacity: 0;
+  pointer-events: none;
+}
+body:not(.awake) .icon { pointer-events: none; }
+
+@media (max-width: 760px) {
+  #clock-time { font-weight: 200; }
+  #clock-date { letter-spacing: 0.24em; }
+}
