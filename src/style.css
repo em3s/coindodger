@@ -435,3 +435,28 @@ html, body { overscroll-behavior: none; }
   #presets { grid-template-columns: repeat(3, 1fr); }
   #presets button.danger { grid-column: 1 / -1; }
 }
+
+/* ---------- 더블탭 확대 방지 ----------
+   캔버스는 touch-action:none 으로 카메라 조작을 직접 처리하지만,
+   그 위에 뜬 HUD 버튼은 기본값이라 연타하면 브라우저가 더블탭 확대로 해석한다.
+   manipulation = 더블탭 확대만 끄고, 의도적인 핀치 확대는 남긴다. */
+html,
+body {
+  touch-action: manipulation;
+}
+
+#hud button,
+#hud label,
+#hud input,
+#hud .card {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 세팅 패널은 좁은 화면에서 세로 스크롤이 필요하다 */
+#setup-panel {
+  touch-action: pan-y;
+}
