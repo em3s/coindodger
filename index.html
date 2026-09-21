@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Coin Dozer</title>
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <canvas id="stage" touch-action="none"></canvas>
+
+    <div id="loader">
+      <div class="ring"></div>
+      <p>물리 엔진을 준비하는 중…</p>
+    </div>
+
+    <div id="hud" hidden>
+      <header class="bar">
+        <div class="brand">
+          <span class="mark">◉</span>
+          <span class="name">COIN <em>DOZER</em></span>
+        </div>
+        <div class="stats">
+          <div class="card">
+            <span class="k">보유</span>
+            <strong id="stat-wallet">0</strong>
+          </div>
+          <div class="card gold" id="card-won">
+            <span class="k">획득</span>
+            <strong id="stat-won">0</strong>
+          </div>
+          <div class="card">
+            <span class="k">필드</span>
+            <strong id="stat-field">0</strong>
+          </div>
+        </div>
+      </header>
+
+      <div id="toast"></div>
+
+      <section id="setup-panel">
+        <h2>세팅 모드 <span>영업 전 진열</span></h2>
+        <p class="sub">손님에게 “될 것 같은” 그림을 만들어 두는 단계입니다. 푸셔는 멈춰 있고, 배출은 집계되지 않습니다.</p>
+        <div id="presets">
+          <button data-preset="standard">기본</button>
+          <button data-preset="loaded">가득</button>
+          <button data-preset="brink">배출 직전</button>
+          <button data-preset="edge">가장자리 아슬아슬</button>
+          <button data-preset="towers">탑 쌓기</button>
+          <button data-preset="empty" class="danger">비우기</button>
+        </div>
+        <p class="sub">필드를 <b>클릭</b>하면 그 자리에 동전을 놓습니다. 같은 자리를 반복해 누르면 쌓입니다.</p>
+      </section>
+
+      <footer class="dock">
+        <label class="guide" for="slider">
+          <span class="cap">투입 위치</span>
+          <input id="slider" type="range" min="-1" max="1" step="0.001" value="0" aria-label="투입 위치" />
+        </label>
+        <button id="btn-insert" class="insert">
+          <span class="coin">◉</span>
+          <span>동전 넣기</span>
+          <kbd>Space</kbd>
+        </button>
+        <div class="toggles">
+          <button id="btn-auto" class="ghost" aria-pressed="false">⟳ 자동 투입 <kbd>T</kbd></button>
+          <button id="btn-sound" class="ghost">🔊 소리 켜짐</button>
+          <button id="btn-reset" class="ghost">⌖ 시점 초기화 <kbd>R</kbd></button>
+          <button id="btn-setup" class="ghost" aria-pressed="false">⚙ 세팅 모드 <kbd>E</kbd></button>
+          <button id="btn-share" class="ghost">🔗 현재 상태 링크</button>
+        </div>
+        <p class="hint">투입구 손잡이를 <b>드래그</b>하거나 <kbd>←</kbd><kbd>→</kbd>로 좌우로 밀고, <kbd>Space</kbd> 또는 클릭으로 투입합니다. 동전은 슈트를 타고 내려가 떨어집니다 — 타이밍이 자리를 정합니다.</p>
+      </footer>
+
+      <div id="fps"></div>
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
